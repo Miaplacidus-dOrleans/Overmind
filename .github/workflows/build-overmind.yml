@@ -3,7 +3,7 @@ name: Build Overmind main.js
 
 on:
   push:
-    branches: [ master ]   # 按你的分支改
+    branches: [ master ]   # 按需改
   workflow_dispatch:
 
 permissions:
@@ -15,36 +15,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 老项目更稳的是 Node 16；不行再试 18/14
       - uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: '16'   # 不行再试 18/14
 
-      # 没有 package-lock.json 就不要用 npm ci
       - name: Install deps
         run: npm install --no-audit --no-fund --no-package-lock --legacy-peer-deps
 
-      # 有的 fork 脚本叫 compile，有的叫 build，两者择一
-      - name: Build main.js
+      # 若没有 src/settings.ts，则生成一个把别名指到 settings.default 的适配层
+      - name: Ensure settings alias
+        run: |
+          mkdir -p src
+          if [ ! -f src/settings.ts ]; then
+            echo "export * from './settings.default'; export { default } from './settings.default';" > src/settings.ts
+          fi
+          sed -n '1,120p' src/settings.ts
+
+      - name: Build (rollup -> dist/main.js)
         run: npm run compile || npm run build
 
-      # 收集产物：常见输出在根目录，也可能在 build/
-      - name: Collect artifact
+      - name: Verify output
         run: |
-          mkdir -p dist
-          if [ -f main.js ]; then
-            cp main.js dist/main.js
-          elif [ -f build/main.js ]; then
-            cp build/main.js dist/main.js
-          else
-            echo "main.js not found"; ls -la; ls -la build || true; exit 1
-          fi
+          test -f dist/main.js || (echo "dist/main.js not found"; ls -la; ls -la dist || true; exit 1)
           ls -lah dist
 
-      # 只保留一个 file_pattern，避免你遇到的 YAML 错误
       - name: Commit dist/main.js
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "CI: build main.js from ${{ github.sha }}"
+          commit_message: "CI: build dist/main.js from ${{ github.sha }}"
           file_pattern: dist/main.js
-
+          add_options: '--force'   # 若仓库把 dist/ 忽略了，强制添加
