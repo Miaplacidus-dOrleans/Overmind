@@ -2,7 +2,7 @@ name: Build Overmind main.js
 
 on:
   push:
-    branches: [ master ]   # 或改成你实际开发分支
+    branches: [ master ]     # 按你使用的分支改
   workflow_dispatch:
 
 permissions:
@@ -14,21 +14,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Overmind 使用 rollup 打包成单文件 main.js
-      # 老项目依赖更稳的是 Node 16（遇到问题再调到 18/20 试）
+      # Overmind 是老项目，先用 Node 16；如果还不行再尝试 18 或 14
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '16'
 
-      - run: npm ci
+      # 关键修改：用 npm install（避免生成锁文件也避免审计提示）
+      - run: npm install --no-audit --no-fund --no-package-lock --legacy-peer-deps
+
+      # 编译：Overmind 会用 rollup 打成单文件 main.js
       - run: npm run compile
 
-      # 把编译产物集中到 dist/ 并提交回仓库
+      # 收集产物到 dist/
       - run: |
           mkdir -p dist
           cp main.js dist/main.js
+          ls -lah dist
 
+      # 提交 dist/main.js 回仓库，供 Screeps GitHub 同步拉取
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "CI: build main.js from ${{ github.sha }}"
+          file_pattern: dist/main.js
+
           file_pattern: dist/main.js
