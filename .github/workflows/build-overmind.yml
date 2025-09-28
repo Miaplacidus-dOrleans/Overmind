@@ -1,9 +1,8 @@
-# .github/workflows/build-overmind.yml
-name: Build Overmind main.js
+name: Build & Commit Overmind (dist/main.js)
 
 on:
   push:
-    branches: [ master ]   # 按需改
+    branches: [ main, master ]   # 你的默认分支写在这里
   workflow_dispatch:
 
 permissions:
@@ -14,34 +13,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '16'   # 不行再试 18/14
+          node-version: '16'   # 老依赖更稳；不行再试 18/14
 
-      - name: Install deps
+      - name: Install deps (no lockfile)
         run: npm install --no-audit --no-fund --no-package-lock --legacy-peer-deps
 
-      # 若没有 src/settings.ts，则生成一个把别名指到 settings.default 的适配层
+      # 这个 fork 把 ~settings.ts 换成了 settings.default.ts
+      # 生成别名文件，让 import "settings" 正常解析
       - name: Ensure settings alias
         run: |
           mkdir -p src
-          if [ ! -f src/settings.ts ]; then
-            echo "export * from './settings.default'; export { default } from './settings.default';" > src/settings.ts
-          fi
-          sed -n '1,120p' src/settings.ts
+          echo "export * from './settings.default';" > src/settings.ts
+          sed -n '1,40p' src/settings.ts
 
-      - name: Build (rollup -> dist/main.js)
+      - name: Build (rollup → dist/main.js)
         run: npm run compile || npm run build
 
       - name: Verify output
         run: |
           test -f dist/main.js || (echo "dist/main.js not found"; ls -la; ls -la dist || true; exit 1)
           ls -lah dist
+          wc -c dist/main.js
 
+      # 把 dist/main.js 提交回仓库；即使被 .gitignore 也强制加入
       - name: Commit dist/main.js
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "CI: build dist/main.js from ${{ github.sha }}"
           file_pattern: dist/main.js
-          add_options: '--force'   # 若仓库把 dist/ 忽略了，强制添加
+          add_options: '--force'
+
