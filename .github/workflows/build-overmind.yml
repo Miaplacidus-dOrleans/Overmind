@@ -18,7 +18,7 @@ jobs:
       # 老项目依赖更稳的是 Node 16（遇到问题再调到 18/20 试）
       - uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: '20'
 
       - run: npm ci
       - run: npm run compile
