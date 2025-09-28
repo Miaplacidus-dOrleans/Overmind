@@ -1,0 +1,34 @@
+name: Build Overmind main.js
+
+on:
+  push:
+    branches: [ master ]   # 或改成你实际开发分支
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Overmind 使用 rollup 打包成单文件 main.js
+      # 老项目依赖更稳的是 Node 16（遇到问题再调到 18/20 试）
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+
+      - run: npm ci
+      - run: npm run compile
+
+      # 把编译产物集中到 dist/ 并提交回仓库
+      - run: |
+          mkdir -p dist
+          cp main.js dist/main.js
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "CI: build main.js from ${{ github.sha }}"
+          file_pattern: dist/main.js
