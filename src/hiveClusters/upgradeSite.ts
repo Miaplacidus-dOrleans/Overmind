@@ -141,14 +141,26 @@ export class UpgradeSite extends HiveCluster {
 			let upgradePower =
 				1 +
 				Math.floor(amountOver / UpgradeSite.settings.energyPerBodyUnit);
-			if (this.memory.speedFactor !== undefined) {
-				upgradePower *= this.memory.speedFactor;
-			} else if (amountOver > 800000) {
-				upgradePower *= 4; // double upgrade power if we have lots of surplus energy
-			} else if (amountOver > 500000) {
-				upgradePower *= 2;
-			}
-			return upgradePower;
+            //if (this.memory.speedFactor !== undefined) {
+            //    upgradePower *= this.memory.speedFactor;
+            //}
+            //else if (amountOver > 800000) {
+            //    upgradePower *= 4; // double upgrade power if we have lots of surplus energy
+            //}
+            //else if (amountOver > 500000) {
+            //    upgradePower *= 2;
+            //}
+            
+            // edited; keep the higher speed factor if surplus.
+            if (this.memory.speedFactor !== undefined) {
+                upgradePower *= Math.max(this.memory.speedFactor, amountOver > 800000 ? 4 : amountOver > 500000 ? 2 : 1);
+            } else if (amountOver > 800000) {
+                upgradePower *= 4; // lots of surplus energy
+            } else if (amountOver > 500000) {
+                upgradePower *= 2;
+            }
+            
+            return upgradePower;
 		});
 	}
 
