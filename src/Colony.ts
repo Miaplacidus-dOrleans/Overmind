@@ -391,36 +391,35 @@ export class Colony {
 		}
 	}
 
-	/**
-	 * Builds the colony object
-	 */
-	build(roomName: string, outposts: string[]): void {
-		// Register rooms
-		this.room = Game.rooms[roomName];
-		this.roomNames = [roomName].concat(outposts);
-		// Register outposts
-		this.outposts = _.compact(
-			_.map(outposts, (outpost) => Game.rooms[outpost])
-		);
-		this.rooms = [this.room].concat(this.outposts);
-		this.miningSites = {}; // filled in by harvest directives
-		this.extractionSites = {}; // filled in by extract directives
-		// this.praiseSite = undefined;
-		// Register creeps
-		this.creeps = Overmind.cache.creepsByColony[this.name] || [];
-		this.creepsByRole = _.groupBy(
-			this.creeps,
-			(creep) => creep.memory.role
-		);
-		this.instantEnergyUse = <Record<EnergyUse, number>>{};
-
-		// Register the rest of the colony components; the order in which these are called is important!
-		this.registerRoomObjects_cached(); // Register real colony components
-		this.registerOperationalState(); // Set the colony operational state
-		this.registerUtilities(); // Register logistics utilities, room planners, and layout info
-		this.registerHiveClusters(); // Build the hive clusters
-		/* Colony.spawnMoarOverlords() gets called from Overmind.ts, along with Directive.spawnMoarOverlords() */
-	}
+    /**
+     * Builds the colony object
+     */
+    build(roomName, outposts) {
+        // Register rooms
+        this.room = Game.rooms[roomName];
+        // Without this, outpostIndex follows input/creation order, so a farther room can get a smaller index -> smaller numeric priority (higher) -> spawns favor the wrong outpost.
+        // sort remotes by real room-graph distance (fallback to linear) → fixes “reversed” priorities caused by arbitrary input order
+        const sortedOutposts = _.sortBy(outposts, rn => { const r = Game.map.findRoute(roomName, rn); return Array.isArray(r) ? r.length : Game.map.getRoomLinearDistance(roomName, rn); }); 
+        // keep home first; nearest→farthest persists in roomNames so outpostIndex gives smaller (higher) priorities to closer rooms
+        this.roomNames = [roomName, ...sortedOutposts]; 
+        // this.roomNames = [roomName].concat(outposts);
+        // Register outposts
+        this.outposts = _.compact(_.map(outposts, (outpost) => Game.rooms[outpost]));
+        this.rooms = [this.room].concat(this.outposts);
+        this.miningSites = {}; // filled in by harvest directives
+        this.extractionSites = {}; // filled in by extract directives
+        // this.praiseSite = undefined;
+        // Register creeps
+        this.creeps = Overmind.cache.creepsByColony[this.name] || [];
+        this.creepsByRole = _.groupBy(this.creeps, (creep) => creep.memory.role);
+        this.instantEnergyUse = {};
+        // Register the rest of the colony components; the order in which these are called is important!
+        this.registerRoomObjects_cached(); // Register real colony components
+        this.registerOperationalState(); // Set the colony operational state
+        this.registerUtilities(); // Register logistics utilities, room planners, and layout info
+        this.registerHiveClusters(); // Build the hive clusters
+        /* Colony.spawnMoarOverlords() gets called from Overmind.ts, along with Directive.spawnMoarOverlords() */
+    }
 
 	/**
 	 * Refreshes the state of the colony object
