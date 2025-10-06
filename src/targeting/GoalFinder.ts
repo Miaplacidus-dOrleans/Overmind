@@ -271,17 +271,56 @@ export class GoalFinder {
 		}
 
 		if (includeStructures) {
-			const approachStructures: Structure[] = [];
-			for (const structure of room.hostileStructures) {
-				approachStructures.push(structure);
-			}
-			for (const wall of room.walls) {
-				approachStructures.push(wall);
-			}
-			for (const approachStructure of approachStructures) {
-				approach.push({ pos: approachStructure.pos, range: 1 });
-			}
-		}
+            const approachStructures = [];
+
+            // 1) First tier: all hostile structures EXCEPT ramparts (e.g., towers, spawns, storages, etc.)
+            // This keeps original priorities for real, damageable targets.
+            for (const s of room.hostileStructures) {
+                if (s.structureType !== STRUCTURE_RAMPART) {
+                approachStructures.push(s);
+              }
+            }
+
+            // 2) New tier: ramparts (placed BEFORE walls)
+            // This ensures ramparts are considered only after other structures, but still ahead of walls.
+            for (const s of room.hostileStructures) {
+                if (s.structureType === STRUCTURE_RAMPART) {
+                approachStructures.push(s);
+            }
+            }
+
+            //for (const structure of room.hostileStructures) {
+            //  approachStructures.push(structure);
+            //}
+
+
+            // 4) Walls (lowest priority)
+            for (const wall of room.walls) approachStructures.push(wall);
+
+            // 1) First tier: all hostile structures EXCEPT ramparts (e.g., towers, spawns, storages, etc.)
+            //    This keeps original priorities for real, damageable targets.
+            //for (const s of room.hostileStructures) {
+            //   if (s.structureType !== STRUCTURE_RAMPART) {
+            //        approachStructures.push(s);
+            //    }
+            //}
+            // 2) New tier: ramparts (placed BEFORE walls)
+            //    This ensures ramparts are considered only after other structures, but still ahead of walls.
+            //for (const s of room.hostileStructures) {
+            //    if (s.structureType === STRUCTURE_RAMPART) {
+            //        approachStructures.push(s);
+            //    }
+            //}
+            //for (const structure of room.hostileStructures) {
+            //    approachStructures.push(structure);
+            //}
+            //for (const wall of room.walls) {
+            //    approachStructures.push(wall);
+            //}
+            for (const approachStructure of approachStructures) {
+                approach.push({ pos: approachStructure.pos, range: 1 });
+            }
+        }
 
 		log.debugCreep(swarm.creeps[0], () => {
 			return `Swarm combat goals:\nApproach:\n${columnify(
