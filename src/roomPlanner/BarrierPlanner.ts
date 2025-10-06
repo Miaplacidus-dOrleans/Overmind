@@ -183,26 +183,35 @@ export class BarrierPlanner {
 		this.memory.barrierCoordsPacked = packCoordList(this.barrierPositions);
 	}
 
-	/* Quick lookup for if a barrier should be in this position. Barriers returning false won't be maintained. */
-	barrierShouldBeHere(pos: RoomPosition): boolean {
-		// Once you are high level, only maintain ramparts at bunker or controller
-		if (
-			this.colony.layout == "bunker" &&
-			this.colony.level >= BarrierPlanner.settings.bunkerizeRCL
-		) {
-			return (
-				insideBunkerBounds(pos, this.colony) ||
-				pos.getRangeTo(this.colony.controller) == 1
-			);
-		}
-		// Otherwise look up from memory
-		if (this._barrierLookup == undefined) {
-			this._barrierLookup = _.memoize((p: RoomPosition) =>
-				this.memory.barrierCoordsPacked.includes(packCoord(p))
-			);
-		}
-		return this._barrierLookup(pos);
-	}
+    /* Quick lookup for if a barrier should be in this position. Barriers returning false won't be maintained. */
+    barrierShouldBeHere(pos) {
+        // 1) MEMORY-FIRST: keep planned periphery tiles at any RCL
+        if (this._barrierLookup == undefined) {
+            this._barrierLookup = _.memoize((p) =>
+                this.memory.barrierCoordsPacked.includes(packCoord(p)));
+        }
+        if (this._barrierLookup(pos)) return true;
+
+        // 2) FALLBACK: still protect raw bunker bounds and controller ring at high RCL
+        if (this.colony.layout == "bunker" &&
+            this.colony.level >= BarrierPlanner_1.settings.bunkerizeRCL) {
+            return insideBunkerBounds(pos, this.colony) ||
+                   pos.getRangeTo(this.colony.controller) == 1;
+        }
+        return false;
+        
+        // Once you are high level, only maintain ramparts at bunker or controller
+        //if (this.colony.layout == "bunker" &&
+        //    this.colony.level >= BarrierPlanner_1.settings.bunkerizeRCL) {
+        //    return (insideBunkerBounds(pos, this.colony) ||
+        //        pos.getRangeTo(this.colony.controller) == 1);
+        //}
+        // Otherwise look up from memory
+        //if (this._barrierLookup == undefined) {
+        //    this._barrierLookup = _.memoize((p) => this.memory.barrierCoordsPacked.includes(packCoord(p)));
+        //}
+        //return this._barrierLookup(pos);
+    }
 
 	/* Create construction sites for any buildings that need to be built */
 	private buildMissingRamparts(): void {
