@@ -738,55 +738,49 @@ export class Swarm implements ProtoSwarm {
 		return NO_ACTION;
 	}
 
-	private getBestOrientation(
-		room: Room,
-		includeStructures = true,
-		includeCreeps = false
-	): TOP | RIGHT | BOTTOM | LEFT {
-		const targets: _HasRoomPosition[] = [];
-		if (includeStructures) {
-			const structureTargets = this.findInMinRange(
-				room.hostileStructures,
-				1
-			);
-			for (const structure of structureTargets) {
-				targets.push(structure);
-			}
-		}
-		if (includeCreeps) {
-			const creepTargets = this.findInMinRange(room.dangerousHostiles, 2);
-			for (const creep of creepTargets) {
-				targets.push(creep);
-			}
-		}
+	private     getBestOrientation(room, includeStructures = true, includeCreeps = false) {
+        const targets = [];
+        if (includeStructures) {
+            // Prioritise: non-rampart hostile structures first, then ramparts, then walls.
+            // Keep `targets` as a flat array and push everything in that order, still honouring min-range=1.
 
-		this.debug(
-			`Targets: `,
-			_.map(targets, (t) => t.pos.print)
-		);
-		if (targets.length == 0) {
-			return this.orientation;
-		}
-		const dxList = _.flatten(
-			_.map(this.creeps, (creep) =>
-				_.map(targets, (target) => target.pos.x - creep.pos.x)
-			)
-		);
-		const dyList = _.flatten(
-			_.map(this.creeps, (creep) =>
-				_.map(targets, (target) => target.pos.y - creep.pos.y)
-			)
-		);
-		const dx = _.sum(dxList) / dxList.length || 0;
-		const dy = _.sum(dyList) / dyList.length || 0;
-		this.debug(`dx: ${dx}, dy: ${dy}`);
-		if (Math.abs(dx) > Math.abs(dy)) {
-			return dx > 0 ? RIGHT : LEFT;
-		} else {
-			return dy > 0 ? BOTTOM : TOP;
-		}
-	}
+            const nonRamp = this.findInMinRange(
+                _.filter(room.hostileStructures, s => s.structureType !== STRUCTURE_RAMPART),
+                1,
+            );
+            for (const s of nonRamp) targets.push(s);
 
+            const ramps = this.findInMinRange(
+                _.filter(room.hostileStructures, s => s.structureType === STRUCTURE_RAMPART),
+                1,
+            );
+            for (const s of ramps) targets.push(s);
+
+            const walls = this.findInMinRange(room.walls, 1);
+            for (const w of walls) targets.push(w);
+        }
+        if (includeCreeps) {
+            const creepTargets = this.findInMinRange(room.dangerousHostiles, 2);
+            for (const creep of creepTargets) {
+                targets.push(creep);
+            }
+        }
+        this.debug(`Targets: `, _.map(targets, (t) => t.pos.print));
+        if (targets.length == 0) {
+            return this.orientation;
+        }
+        const dxList = _.flatten(_.map(this.creeps, (creep) => _.map(targets, (target) => target.pos.x - creep.pos.x)));
+        const dyList = _.flatten(_.map(this.creeps, (creep) => _.map(targets, (target) => target.pos.y - creep.pos.y)));
+        const dx = _.sum(dxList) / dxList.length || 0;
+        const dy = _.sum(dyList) / dyList.length || 0;
+        this.debug(`dx: ${dx}, dy: ${dy}`);
+        if (Math.abs(dx) > Math.abs(dy)) {
+            return dx > 0 ? RIGHT : LEFT;
+        }
+        else {
+            return dy > 0 ? BOTTOM : TOP;
+        }
+    }
 	// Auto-combat methods =============================================================================================
 
 	/**
