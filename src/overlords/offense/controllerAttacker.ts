@@ -110,19 +110,16 @@ export class ControllerAttackerOverlord extends CombatOverlord {
 		}
 	}
 
-	private launchAttack(): void {
-		let signed = false;
-		if (this.room && this.room.controller) {
-			for (const infestor of this.controllerAttackers) {
-				infestor.attackController(this.room.controller);
-				if (!signed) {
-					signed =
-						infestor.signController(
-							this.room.controller,
-							"For the swarm"
-						) == OK;
-				}
-			}
-		}
-	}
+	private launchAttack() {
+        let signed = false;
+        if (this.room && this.room.controller) {
+            for (const infestor of this.controllerAttackers) {
+                infestor.attackController(this.room.controller);
+                if (!signed) {
+                    signed =
+                        infestor.signController(this.room.controller, Memory.settings.signature) == OK;
+                }
+            }
+        }
+    }
 }
